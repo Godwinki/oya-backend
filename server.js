@@ -7,6 +7,7 @@ const rateLimit = require('express-rate-limit');
 const { Sequelize } = require('sequelize');
 const colors = require('colors');
 require('dotenv').config();
+const cors = require('cors');
 const { apiLimiter } = require('./middleware/rateLimiter');
 const userRoutes = require('./routes/userRoutes');
 const config = require('./config/config.json');
@@ -116,32 +117,31 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 // Place this BEFORE any middleware that uses this setting
 app.set('trust proxy', process.env.NODE_ENV === 'production' ? 1 : 0); // Trust first proxy in production
 
-// Updated CORS configuration for Railway compatibility
-app.use((req, res, next) => {
-  // Allow specific origins or all origins based on environment
-  const allowedOrigins = process.env.ALLOWED_ORIGINS 
-    ? process.env.ALLOWED_ORIGINS.split(',') 
-    : ['http://localhost:3000', 'https://awibsaccosms.netlify.app'];
-  
-  const origin = req.headers.origin;
-  if (origin && (allowedOrigins.includes(origin) || process.env.NODE_ENV !== 'production')) {
-    res.header('Access-Control-Allow-Origin', origin);
-  } else if (process.env.NODE_ENV !== 'production') {
-    // In development, allow all origins
-    res.header('Access-Control-Allow-Origin', '*');
-  }
-  
-  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
-  res.header('Access-Control-Allow-Credentials', 'true');
-  
-  // Handle preflight
-  if (req.method === 'OPTIONS') {
-    return res.status(200).end();
-  }
-  
-  next();
-});
+// Use the cors package instead of custom middleware for more reliable CORS handling
+const allowedOrigins = process.env.ALLOWED_ORIGINS 
+  ? process.env.ALLOWED_ORIGINS.split(',') 
+  : ['http://localhost:3000', 'https://awibsaccosms.netlify.app', 'https://awibsms.netlify.app'];
+
+app.use(cors({
+  origin: function(origin, callback) {
+    // Allow requests with no origin (like mobile apps, curl requests)
+    if (!origin) return callback(null, true);
+    
+    if (allowedOrigins.indexOf(origin) === -1 && process.env.NODE_ENV === 'production') {
+      console.log(`CORS blocked origin: ${origin}`);
+      return callback(null, false);
+    }
+    console.log(`CORS allowed origin: ${origin}`);
+    return callback(null, true);
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+  maxAge: 86400 // 24 hours
+}));
+
+// Explicit OPTIONS preflight handler - this helps with some CORS edge cases
+app.options('*', cors());
 
 // Let express use its built-in middleware
 app.use(express.json());
