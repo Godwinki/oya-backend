@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{title}}</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      line-height: 1.6;
+      color: #333;
+      margin: 0;
+      padding: 0;
+    }
+    .container {
+      max-width: 600px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    .header {
+      background-color: #0f172a;
+      color: #fff;
+      padding: 20px;
+      text-align: center;
+    }
+    .logo {
+      font-size: 24px;
+      font-weight: bold;
+      margin-bottom: 10px;
+    }
+    .content {
+      padding: 20px;
+      background-color: #f9fafb;
+    }
+    .footer {
+      text-align: center;
+      padding: 20px;
+      font-size: 12px;
+      color: #6b7280;
+    }
+    .button {
+      display: inline-block;
+      background-color: #2563eb;
+      color: #fff;
+      padding: 10px 20px;
+      text-decoration: none;
+      border-radius: 4px;
+      margin-top: 15px;
+    }
+    .details {
+      background-color: #fff;
+      border: 1px solid #e5e7eb;
+      border-radius: 4px;
+      padding: 15px;
+      margin-top: 20px;
+    }
+    .expense-details {
+      margin-top: 20px;
+    }
+    .expense-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 8px 0;
+      border-bottom: 1px solid #e5e7eb;
+    }
+    .expense-label {
+      font-weight: bold;
+      color: #4b5563;
+    }
+    .expense-value {
+      color: #111827;
+    }
+    .status {
+      display: inline-block;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: bold;
+      text-transform: uppercase;
+    }
+    .status-pending {
+      background-color: #fef3c7;
+      color: #92400e;
+    }
+    .status-approved {
+      background-color: #d1fae5;
+      color: #065f46;
+    }
+    .status-rejected {
+      background-color: #fee2e2;
+      color: #b91c1c;
+    }
+    .status-processed {
+      background-color: #dbeafe;
+      color: #1e40af;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <div class="logo">WealthGuard</div>
+      <div>SACCO Management System</div>
+    </div>
+    <div class="content">
+      <p>Hello {{user.firstName}},</p>
+      
+      <p>{{message}}</p>
+      
+      <div class="details">
+        <div class="expense-details">
+          <div class="expense-row">
+            <span class="expense-label">Request Number:</span>
+            <span class="expense-value">{{expense.requestNumber}}</span>
+          </div>
+          <div class="expense-row">
+            <span class="expense-label">Title:</span>
+            <span class="expense-value">{{expense.title}}</span>
+          </div>
+          <div class="expense-row">
+            <span class="expense-label">Amount:</span>
+            <span class="expense-value">{{expense.amount}}</span>
+          </div>
+          <div class="expense-row">
+            <span class="expense-label">Status:</span>
+            <span class="expense-value">
+              <span class="status {{statusClass}}">{{expense.status}}</span>
+            </span>
+          </div>
+          <div class="expense-row">
+            <span class="expense-label">Created Date:</span>
+            <span class="expense-value">{{expense.createdDate}}</span>
+          </div>
+          {{#if expense.approvedDate}}
+          <div class="expense-row">
+            <span class="expense-label">Approved Date:</span>
+            <span class="expense-value">{{expense.approvedDate}}</span>
+          </div>
+          {{/if}}
+          {{#if expense.processedDate}}
+          <div class="expense-row">
+            <span class="expense-label">Processed Date:</span>
+            <span class="expense-value">{{expense.processedDate}}</span>
+          </div>
+          {{/if}}
+        </div>
+      </div>
+      
+      <a href="{{actionUrl}}" class="button">View Expense Details</a>
+      
+      <p>Regards,<br>WealthGuard Team</p>
+    </div>
+    <div class="footer">
+      <p>&copy; 2025 WealthGuard. All rights reserved.</p>
+      <p>This is an automated message. Please do not reply to this email.</p>
+    </div>
+  </div>
+</body>
+</html>

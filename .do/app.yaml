@@ -1,0 +1,33 @@
+name: awib-sacco-management-system
+services:
+- name: api
+  github:
+    branch: main
+    deploy_on_push: true
+    repo: YOUR_GITHUB_USERNAME/YOUR_REPO_NAME
+  source_dir: /backend
+  http_port: 8080
+  instance_count: 1
+  instance_size_slug: basic-xxs
+  routes:
+  - path: /
+  envs:
+  - key: NODE_ENV
+    scope: RUN_TIME
+    value: production
+  - key: PORT
+    scope: RUN_TIME
+    value: "8080"
+  - key: DATABASE_URL
+    scope: RUN_TIME
+    type: SECRET
+    # You'll need to add your Railway DATABASE_URL here during deployment
+  - key: JWT_SECRET
+    scope: RUN_TIME
+    type: SECRET
+  - key: SESSION_SECRET
+    scope: RUN_TIME
+    type: SECRET
+  - key: ALLOWED_ORIGINS
+    scope: RUN_TIME
+    value: "https://yourdomain.com,https://yourfrontend.ondigitalocean.app"

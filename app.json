@@ -1,0 +1,43 @@
+{
+  "name": "AWIB SACCO Management System",
+  "description": "Backend API for the AWIB SACCO Management System with Tanzania SMS integration",
+  "env": {
+    "NODE_ENV": {
+      "description": "Environment (production, development)",
+      "value": "production"
+    },
+    "DATABASE_URL": {
+      "description": "PostgreSQL connection string",
+      "required": true
+    },
+    "SESSION_SECRET": {
+      "description": "Secret for Express sessions",
+      "required": true,
+      "generator": "secret"
+    },
+    "JWT_SECRET": {
+      "description": "Secret for JWT authentication",
+      "required": true,
+      "generator": "secret"
+    },
+    "PORT": {
+      "description": "Port to run the application on",
+      "value": "8080"
+    },
+    "ALLOWED_ORIGINS": {
+      "description": "Comma-separated list of allowed origins for CORS",
+      "required": false
+    }
+  },
+  "formation": {
+    "web": {
+      "quantity": 1,
+      "size": "basic"
+    }
+  },
+  "buildpacks": [
+    {
+      "url": "heroku/nodejs"
+    }
+  ]
+}
