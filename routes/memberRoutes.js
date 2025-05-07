@@ -5,6 +5,9 @@ const memberController = require('../controllers/memberController');
 const accountController = require('../controllers/accountController');
 const { memberValidationRules, validateMember } = require('../middleware/memberMiddleware');
 
+// Get next available account number
+router.get('/next-account-number', memberController.getNextAccountNumber);
+
 // CRUD routes
 router.post('/', memberValidationRules, validateMember, memberController.createMember);
 router.get('/', memberController.getMembers);

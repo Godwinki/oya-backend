@@ -1,11 +1,31 @@
 // controllers/memberController.js
 const db = require('../models');
 const Member = db.Member;
+const { getNextMemberNumber } = require('../utils/accountUtils');
+
+// Get the next available member account number
+exports.getNextAccountNumber = async (req, res) => {
+  console.log('📝 [Member] Request for next available account number');
+  try {
+    const nextNumber = await getNextMemberNumber();
+    console.log('✅ [Member] Next account number generated:', nextNumber);
+    res.json({ emoji: '💳', message: 'Next account number generated', accountNumber: nextNumber });
+  } catch (error) {
+    console.log('❌ [Member] Failed to generate next account number:', error.message);
+    res.status(500).json({ emoji: '❌', error: error.message });
+  }
+};
 
 // Create a new member
 exports.createMember = async (req, res) => {
   console.log('📝 [Member] Create member request received');
   try {
+    // If no account number is provided, generate one
+    if (!req.body.accountNumber) {
+      req.body.accountNumber = await getNextMemberNumber();
+      console.log('ℹ️ [Member] Auto-generated account number:', req.body.accountNumber);
+    }
+    
     const member = await Member.create(req.body);
     console.log('✅ [Member] Member created:', member.id);
     res.status(201).json({ emoji: '🎉', message: 'Member created successfully', member });
