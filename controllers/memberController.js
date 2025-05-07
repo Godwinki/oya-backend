@@ -314,20 +314,134 @@ exports.updateMember = async (req, res) => {
   }
 };
 
-// Delete a member
+// Delete a member and all associated records
 exports.deleteMember = async (req, res) => {
-  console.log(`🗑️ [Member] Delete request for member: ${req.params.id}`);
+  const memberId = req.params.id;
+  console.log(`🗑️ [Member] Delete request for member: ${memberId}`);
+  
+  // Start a transaction to ensure all deletions are atomic
+  const transaction = await db.sequelize.transaction();
+  
   try {
-    const member = await Member.findByPk(req.params.id);
+    // Check if member exists
+    const member = await Member.findByPk(memberId);
     if (!member) {
-      console.log(`⚠️ [Member] Member not found for delete: ${req.params.id}`);
+      console.log(`⚠️ [Member] Member not found for delete: ${memberId}`);
+      await transaction.rollback();
       return res.status(404).json({ emoji: '⚠️', error: 'Member not found' });
     }
-    await member.destroy();
-    console.log(`✅ [Member] Member deleted: ${req.params.id}`);
-    res.json({ emoji: '🗑️', message: 'Member deleted' });
+    
+    // First fetch all accounts belonging to this member
+    const memberAccounts = [];
+    if (db.MemberAccount) {
+      const accounts = await db.MemberAccount.findAll({
+        where: { memberId: memberId },
+        transaction
+      }).catch(() => []);
+      memberAccounts.push(...accounts);
+    }
+    
+    // Get account IDs for transaction deletion
+    const accountIds = memberAccounts.map(account => account.id);
+    
+    // Get counts for reporting
+    const beneficiaryCount = db.Beneficiary ? 
+      await db.Beneficiary.count({ where: { memberId } }).catch(() => 0) : 0;
+      
+    const emergencyContactCount = db.EmergencyContact ? 
+      await db.EmergencyContact.count({ where: { memberId } }).catch(() => 0) : 0;
+      
+    const accountCount = memberAccounts.length;
+    
+    const paymentCount = db.Payment ? 
+      await db.Payment.count({ where: { memberId } }).catch(() => 0) : 0;
+      
+    const loanCount = db.Loan ? 
+      await db.Loan.count({ where: { memberId } }).catch(() => 0) : 0;
+    
+    let transactionCount = 0;
+    if (db.Transaction && accountIds.length > 0) {
+      transactionCount = await db.Transaction.count({
+        where: { accountId: { [db.Sequelize.Op.in]: accountIds } }
+      }).catch(() => 0);
+    }
+    
+    console.log(`ℹ️ [Member] Deleting member ${memberId} with: ${beneficiaryCount} beneficiaries, ` +
+      `${emergencyContactCount} emergency contacts, ${accountCount} accounts, ${paymentCount} payments, ` +
+      `${loanCount} loans, ${transactionCount} transactions`);
+    
+    // Delete transactions first
+    if (db.Transaction && accountIds.length > 0) {
+      console.log(`Deleting transactions for accounts: ${accountIds.join(', ')}`);
+      await db.Transaction.destroy({
+        where: { accountId: { [db.Sequelize.Op.in]: accountIds } },
+        transaction
+      }).catch(err => console.log('Error deleting transactions:', err.message));
+    }
+    
+    // Delete payments
+    if (db.Payment) {
+      await db.Payment.destroy({
+        where: { memberId },
+        transaction
+      }).catch(err => console.log('Error deleting payments:', err.message));
+    }
+    
+    // Delete loans (if they exist)
+    if (db.Loan) {
+      await db.Loan.destroy({
+        where: { memberId },
+        transaction
+      }).catch(err => console.log('Error deleting loans:', err.message));
+    }
+    
+    // Delete member accounts
+    if (db.MemberAccount) {
+      await db.MemberAccount.destroy({
+        where: { memberId },
+        transaction
+      }).catch(err => console.log('Error deleting member accounts:', err.message));
+    }
+    
+    // Delete beneficiaries
+    if (db.Beneficiary) {
+      await db.Beneficiary.destroy({
+        where: { memberId },
+        transaction
+      }).catch(err => console.log('Error deleting beneficiaries:', err.message));
+    }
+    
+    // Delete emergency contacts
+    if (db.EmergencyContact) {
+      await db.EmergencyContact.destroy({
+        where: { memberId },
+        transaction
+      }).catch(err => console.log('Error deleting emergency contacts:', err.message));
+    }
+    
+    // Finally delete the member
+    await member.destroy({ transaction });
+    
+    // If all operations succeed, commit the transaction
+    await transaction.commit();
+    
+    console.log(`✅ [Member] Member and all related records deleted successfully`);
+    res.json({ 
+      emoji: '🗑️', 
+      message: 'Member deleted successfully', 
+      details: {
+        beneficiariesDeleted: beneficiaryCount,
+        emergencyContactsDeleted: emergencyContactCount,
+        accountsDeleted: accountCount,
+        paymentsDeleted: paymentCount,
+        loansDeleted: loanCount,
+        transactionsDeleted: transactionCount
+      }
+    });
   } catch (error) {
-    console.log('❌ [Member] Failed to delete member:', error.message);
+    // If any operation fails, rollback the transaction
+    await transaction.rollback();
+    console.log(`❌ [Member] Failed to delete member: ${error.message}`);
     res.status(500).json({ emoji: '❌', error: error.message });
   }
 };
