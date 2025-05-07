@@ -42,7 +42,20 @@ module.exports = (sequelize, DataTypes) => {
     timestamps: true,
   });
 
-  // Associations can be added here (e.g., Member.hasMany(...))
+  // Define associations
+  Member.associate = (models) => {
+    // Each member can have many documents
+    Member.hasMany(models.MemberDocument, {
+      foreignKey: 'memberId',
+      as: 'documents'
+    });
+    
+    // Each member can have many accounts
+    Member.hasMany(models.MemberAccount, {
+      foreignKey: 'memberId',
+      as: 'accounts'
+    });
+  };
 
   return Member;
 };

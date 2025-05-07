@@ -20,6 +20,8 @@ const leaveRoutes = require('./routes/leaveRoutes');
 const memberRoutes = require('./routes/memberRoutes');
 const notificationRoutes = require('./routes/notificationRoutes');
 const smsRoutes = require('./routes/smsRoutes');
+const documentRoutes = require('./routes/documentRoutes');
+const accountRoutes = require('./routes/accountRoutes');
 const fs = require('fs');
 const path = require('path');
 const cookieParser = require('cookie-parser');
@@ -28,12 +30,16 @@ const cookieParser = require('cookie-parser');
 const ensureUploadsDirectory = () => {
   const uploadsDir = path.join(__dirname, 'uploads');
   const receiptsDir = path.join(uploadsDir, 'receipts');
+  const memberDocsDir = path.join(uploadsDir, 'member-documents');
   
   if (!fs.existsSync(uploadsDir)) {
     fs.mkdirSync(uploadsDir);
   }
   if (!fs.existsSync(receiptsDir)) {
     fs.mkdirSync(receiptsDir);
+  }
+  if (!fs.existsSync(memberDocsDir)) {
+    fs.mkdirSync(memberDocsDir);
   }
 };
 
@@ -135,7 +141,7 @@ app.use(cors({
     return callback(null, true);
   },
   credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
   maxAge: 86400 // 24 hours
 }));
@@ -258,6 +264,9 @@ const settingRoutes = require('./routes/settingRoutes');
 app.use('/api/settings', settingRoutes);
 
 app.use('/api/members', memberRoutes);
+
+app.use('/api/documents', documentRoutes);
+app.use('/api/accounts', accountRoutes);
 
 // Apply API rate limiting to routes except special cases
 // The readOnlyLimiter is applied directly in the route files for special endpoints
