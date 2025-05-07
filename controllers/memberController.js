@@ -1,6 +1,8 @@
 // controllers/memberController.js
 const db = require('../models');
 const Member = db.Member;
+const Beneficiary = db.Beneficiary;
+const EmergencyContact = db.EmergencyContact;
 const { getNextMemberNumber } = require('../utils/accountUtils');
 
 // Get the next available member account number
@@ -20,15 +22,116 @@ exports.getNextAccountNumber = async (req, res) => {
 exports.createMember = async (req, res) => {
   console.log('📝 [Member] Create member request received');
   try {
-    // If no account number is provided, generate one
-    if (!req.body.accountNumber) {
-      req.body.accountNumber = await getNextMemberNumber();
-      console.log('ℹ️ [Member] Auto-generated account number:', req.body.accountNumber);
-    }
+    // Start a transaction so we can roll back if any part fails
+    const transaction = await db.sequelize.transaction();
     
-    const member = await Member.create(req.body);
-    console.log('✅ [Member] Member created:', member.id);
-    res.status(201).json({ emoji: '🎉', message: 'Member created successfully', member });
+    try {
+      // Extract beneficiaries and emergency contacts from request body
+      const { beneficiaries, emergencyContacts, ...memberData } = req.body;
+      
+      // If no account number is provided, generate one
+      if (!memberData.accountNumber) {
+        memberData.accountNumber = await getNextMemberNumber();
+        console.log('ℹ️ [Member] Auto-generated account number:', memberData.accountNumber);
+      }
+      
+      // Create the member
+      const member = await Member.create(memberData, { transaction });
+      console.log('✅ [Member] Member created:', member.id);
+      
+      // Process beneficiaries if provided
+      if (beneficiaries && Array.isArray(beneficiaries)) {
+        console.log(`ℹ️ [Member] Processing ${beneficiaries.length} beneficiaries`);
+        
+        for (const benef of beneficiaries) {
+          // Transform names if necessary (frontend might use 'name' instead of 'fullName')
+          const benefData = {
+            ...benef,
+            fullName: benef.fullName || benef.name,
+            memberId: member.id
+          };
+          
+          await Beneficiary.create(benefData, { transaction });
+        }
+      } else if (typeof beneficiaries === 'string') {
+        // Parse JSON string if it comes in that format
+        try {
+          const parsedBeneficiaries = JSON.parse(beneficiaries);
+          if (Array.isArray(parsedBeneficiaries)) {
+            console.log(`ℹ️ [Member] Processing ${parsedBeneficiaries.length} parsed beneficiaries`);
+            
+            for (const benef of parsedBeneficiaries) {
+              const benefData = {
+                ...benef,
+                fullName: benef.fullName || benef.name,
+                memberId: member.id
+              };
+              
+              await Beneficiary.create(benefData, { transaction });
+            }
+          }
+        } catch (parseError) {
+          console.log('⚠️ [Member] Failed to parse beneficiaries JSON:', parseError.message);
+        }
+      }
+      
+      // Process emergency contacts if provided
+      if (emergencyContacts && Array.isArray(emergencyContacts)) {
+        console.log(`ℹ️ [Member] Processing ${emergencyContacts.length} emergency contacts`);
+        
+        for (const contact of emergencyContacts) {
+          // Transform names if necessary
+          const contactData = {
+            ...contact,
+            fullName: contact.fullName || contact.name,
+            memberId: member.id
+          };
+          
+          await EmergencyContact.create(contactData, { transaction });
+        }
+      } else if (typeof emergencyContacts === 'string') {
+        // Parse JSON string if it comes in that format
+        try {
+          const parsedContacts = JSON.parse(emergencyContacts);
+          if (Array.isArray(parsedContacts)) {
+            console.log(`ℹ️ [Member] Processing ${parsedContacts.length} parsed emergency contacts`);
+            
+            for (const contact of parsedContacts) {
+              const contactData = {
+                ...contact,
+                fullName: contact.fullName || contact.name,
+                memberId: member.id
+              };
+              
+              await EmergencyContact.create(contactData, { transaction });
+            }
+          }
+        } catch (parseError) {
+          console.log('⚠️ [Member] Failed to parse emergency contacts JSON:', parseError.message);
+        }
+      }
+      
+      // Commit the transaction
+      await transaction.commit();
+      
+      // Fetch the member with all associations to return
+      const memberWithRelations = await Member.findByPk(member.id, {
+        include: [
+          { model: Beneficiary, as: 'beneficiaries' },
+          { model: EmergencyContact, as: 'emergencyContacts' }
+        ]
+      });
+      
+      res.status(201).json({ 
+        emoji: '🎉', 
+        message: 'Member created successfully', 
+        member: memberWithRelations 
+      });
+    } catch (error) {
+      // Rollback transaction if anything fails
+      await transaction.rollback();
+      throw error;
+    }
   } catch (error) {
     console.log('❌ [Member] Failed to create member:', error.message);
     res.status(400).json({ emoji: '❌', error: error.message });
@@ -52,11 +155,19 @@ exports.getMembers = async (req, res) => {
 exports.getMemberById = async (req, res) => {
   console.log(`📥 [Member] Request to get member: ${req.params.id}`);
   try {
-    const member = await Member.findByPk(req.params.id);
+    const member = await Member.findByPk(req.params.id, {
+      include: [
+        { model: Beneficiary, as: 'beneficiaries' },
+        { model: EmergencyContact, as: 'emergencyContacts' },
+        // Keep any other includes that you need
+      ]
+    });
+    
     if (!member) {
       console.log(`⚠️ [Member] Member not found: ${req.params.id}`);
       return res.status(404).json({ emoji: '⚠️', error: 'Member not found' });
     }
+    
     console.log(`✅ [Member] Member returned: ${req.params.id}`);
     res.json({ emoji: '🧑', message: 'Member fetched successfully', member });
   } catch (error) {
@@ -67,18 +178,108 @@ exports.getMemberById = async (req, res) => {
 
 // Update a member
 exports.updateMember = async (req, res) => {
-  console.log(`✏️ [Member] Update request for member: ${req.params.id}`);
+  console.log(`📝 [Member] Update request for member: ${req.params.id}`);
   try {
-    const member = await Member.findByPk(req.params.id);
-    if (!member) {
-      console.log(`⚠️ [Member] Member not found for update: ${req.params.id}`);
-      return res.status(404).json({ emoji: '⚠️', error: 'Member not found' });
+    // Start a transaction
+    const transaction = await db.sequelize.transaction();
+    
+    try {
+      // Extract beneficiaries and emergency contacts from request body
+      const { beneficiaries, emergencyContacts, ...memberData } = req.body;
+      
+      const member = await Member.findByPk(req.params.id);
+      if (!member) {
+        console.log(`⚠️ [Member] Member not found: ${req.params.id}`);
+        await transaction.rollback();
+        return res.status(404).json({ emoji: '⚠️', error: 'Member not found' });
+      }
+      
+      // Update member data
+      await member.update(memberData, { transaction });
+      
+      // Handle beneficiaries if provided
+      if (beneficiaries && (Array.isArray(beneficiaries) || typeof beneficiaries === 'string')) {
+        // First, remove existing beneficiaries
+        await Beneficiary.destroy({
+          where: { memberId: member.id },
+          transaction
+        });
+        
+        // Then add the new ones
+        let beneficiaryArray = beneficiaries;
+        if (typeof beneficiaries === 'string') {
+          try {
+            beneficiaryArray = JSON.parse(beneficiaries);
+          } catch (parseError) {
+            console.log('⚠️ [Member] Failed to parse beneficiaries JSON:', parseError.message);
+            beneficiaryArray = [];
+          }
+        }
+        
+        if (Array.isArray(beneficiaryArray)) {
+          for (const benef of beneficiaryArray) {
+            const benefData = {
+              ...benef,
+              fullName: benef.fullName || benef.name,
+              memberId: member.id
+            };
+            
+            await Beneficiary.create(benefData, { transaction });
+          }
+        }
+      }
+      
+      // Handle emergency contacts if provided
+      if (emergencyContacts && (Array.isArray(emergencyContacts) || typeof emergencyContacts === 'string')) {
+        // First, remove existing emergency contacts
+        await EmergencyContact.destroy({
+          where: { memberId: member.id },
+          transaction
+        });
+        
+        // Then add the new ones
+        let contactsArray = emergencyContacts;
+        if (typeof emergencyContacts === 'string') {
+          try {
+            contactsArray = JSON.parse(emergencyContacts);
+          } catch (parseError) {
+            console.log('⚠️ [Member] Failed to parse emergency contacts JSON:', parseError.message);
+            contactsArray = [];
+          }
+        }
+        
+        if (Array.isArray(contactsArray)) {
+          for (const contact of contactsArray) {
+            const contactData = {
+              ...contact,
+              fullName: contact.fullName || contact.name,
+              memberId: member.id
+            };
+            
+            await EmergencyContact.create(contactData, { transaction });
+          }
+        }
+      }
+      
+      // Commit the transaction
+      await transaction.commit();
+      
+      // Fetch the updated member with all associations
+      const updatedMember = await Member.findByPk(member.id, {
+        include: [
+          { model: Beneficiary, as: 'beneficiaries' },
+          { model: EmergencyContact, as: 'emergencyContacts' }
+        ]
+      });
+      
+      console.log(`✅ [Member] Member updated: ${req.params.id}`);
+      res.json({ emoji: '🔄', message: 'Member updated successfully', member: updatedMember });
+    } catch (error) {
+      await transaction.rollback();
+      throw error;
     }
-    await member.update(req.body);
-    console.log(`✅ [Member] Member updated: ${req.params.id}`);
-    res.json({ emoji: '✏️', message: 'Member updated successfully', member });
   } catch (error) {
-    console.log('❌ [Member] Failed to update member:', error.message);
+    console.log(`❌ [Member] Failed to update member: ${req.params.id}`, error.message);
     res.status(400).json({ emoji: '❌', error: error.message });
   }
 };
