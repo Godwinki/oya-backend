@@ -5,15 +5,33 @@ const accountController = require('../controllers/accountController');
 const auth = require('../middleware/authMiddleware');
 
 // Get all account types (for dropdown menus)
-router.get('/types', 
+router.get('/account-types', 
   auth.protect, 
   accountController.getAccountTypes
 );
 
+// Get a specific account type
+router.get('/account-types/:id', 
+  auth.protect, 
+  accountController.getAccountTypeById
+);
+
 // Create a new account type (admin only)
-router.post('/types', 
+router.post('/account-types', 
   auth.protect, 
   accountController.createAccountType
+);
+
+// Update an account type (admin only)
+router.put('/account-types/:id', 
+  auth.protect, 
+  accountController.updateAccountType
+);
+
+// Get accounts for a specific member
+router.get('/member/:id', 
+  auth.protect, 
+  accountController.getMemberAccounts
 );
 
 // Create a new account for a member

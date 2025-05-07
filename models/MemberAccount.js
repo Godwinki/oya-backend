@@ -24,7 +24,12 @@ module.exports = (sequelize, DataTypes) => {
     },
     balance: {
       type: DataTypes.DECIMAL(15, 2),
-      defaultValue: 0.00
+      defaultValue: 0.00,
+      get() {
+        // Always return balance as a number, never as a string
+        const value = this.getDataValue('balance');
+        return value === null || value === undefined ? 0.00 : parseFloat(value);
+      }
     },
     lastTransactionDate: {
       type: DataTypes.DATE

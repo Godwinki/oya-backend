@@ -268,6 +268,13 @@ app.use('/api/members', memberRoutes);
 app.use('/api/documents', documentRoutes);
 app.use('/api/accounts', accountRoutes);
 
+// Add a direct route for account types to match frontend expectations
+app.use('/api/account-types', (req, res, next) => {
+  // Rewrite the path to match our controller methods
+  req.url = '';
+  return accountRoutes(req, res, next);
+});
+
 // Apply API rate limiting to routes except special cases
 // The readOnlyLimiter is applied directly in the route files for special endpoints
 app.use('/api/users', apiLimiter);
