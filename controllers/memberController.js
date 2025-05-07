@@ -46,8 +46,14 @@ exports.createMember = async (req, res) => {
         for (const benef of beneficiaries) {
           // Transform names if necessary (frontend might use 'name' instead of 'fullName')
           const benefData = {
-            ...benef,
-            fullName: benef.fullName || benef.name,
+            fullName: benef.name || benef.fullName || '',
+            relationship: benef.relationship || '',
+            contactInfo: benef.phone || benef.contactInfo || '',
+            sharePercentage: parseFloat(benef.percentage || benef.sharePercentage || '0'),
+            dateOfBirth: benef.dateOfBirth || new Date(),
+            isMinor: benef.isMinor || false,
+            guardianName: benef.guardianName || '',
+            guardianContact: benef.guardianContact || '',
             memberId: member.id
           };
           
@@ -62,8 +68,14 @@ exports.createMember = async (req, res) => {
             
             for (const benef of parsedBeneficiaries) {
               const benefData = {
-                ...benef,
-                fullName: benef.fullName || benef.name,
+                fullName: benef.name || benef.fullName || '',
+                relationship: benef.relationship || '',
+                contactInfo: benef.phone || benef.contactInfo || '',
+                sharePercentage: parseFloat(benef.percentage || benef.sharePercentage || '0'),
+                dateOfBirth: benef.dateOfBirth || new Date(),
+                isMinor: benef.isMinor || false,
+                guardianName: benef.guardianName || '',
+                guardianContact: benef.guardianContact || '',
                 memberId: member.id
               };
               
@@ -82,8 +94,12 @@ exports.createMember = async (req, res) => {
         for (const contact of emergencyContacts) {
           // Transform names if necessary
           const contactData = {
-            ...contact,
-            fullName: contact.fullName || contact.name,
+            fullName: contact.name || contact.fullName || '',
+            relationship: contact.relationship || '',
+            primaryPhone: contact.phone || contact.primaryPhone || '',
+            alternativePhone: contact.alternativePhone || '',
+            email: contact.email || '',
+            address: contact.address || '',
             memberId: member.id
           };
           
@@ -98,8 +114,12 @@ exports.createMember = async (req, res) => {
             
             for (const contact of parsedContacts) {
               const contactData = {
-                ...contact,
-                fullName: contact.fullName || contact.name,
+                fullName: contact.name || contact.fullName || '',
+                relationship: contact.relationship || '',
+                primaryPhone: contact.phone || contact.primaryPhone || '',
+                alternativePhone: contact.alternativePhone || '',
+                email: contact.email || '',
+                address: contact.address || '',
                 memberId: member.id
               };
               
@@ -219,8 +239,14 @@ exports.updateMember = async (req, res) => {
         if (Array.isArray(beneficiaryArray)) {
           for (const benef of beneficiaryArray) {
             const benefData = {
-              ...benef,
-              fullName: benef.fullName || benef.name,
+              fullName: benef.name || benef.fullName || '',
+              relationship: benef.relationship || '',
+              contactInfo: benef.phone || benef.contactInfo || '',
+              sharePercentage: parseFloat(benef.percentage || benef.sharePercentage || '0'),
+              dateOfBirth: benef.dateOfBirth || new Date(),
+              isMinor: benef.isMinor || false,
+              guardianName: benef.guardianName || '',
+              guardianContact: benef.guardianContact || '',
               memberId: member.id
             };
             
@@ -251,8 +277,12 @@ exports.updateMember = async (req, res) => {
         if (Array.isArray(contactsArray)) {
           for (const contact of contactsArray) {
             const contactData = {
-              ...contact,
-              fullName: contact.fullName || contact.name,
+              fullName: contact.name || contact.fullName || '',
+              relationship: contact.relationship || '',
+              primaryPhone: contact.phone || contact.primaryPhone || '',
+              alternativePhone: contact.alternativePhone || '',
+              email: contact.email || '',
+              address: contact.address || '',
               memberId: member.id
             };
             
