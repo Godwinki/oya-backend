@@ -51,6 +51,35 @@ exports.login = async (req, res) => {
 
       console.log('Login activity created:', loginActivity.id);
 
+      // More strict check for password change requirement
+      // 1. Check explicit force flag
+      // 2. Check virtual property
+      // 3. Check for missing password dates (for existing users)
+      const missingPasswordDates = !user.lastPasswordChangedAt || !user.passwordExpiresAt;
+      
+      // Debug raw values
+      console.log('RAW VALUES:');
+      console.log('- forcePasswordChange:', !!user.forcePasswordChange);
+      console.log('- mustChangePassword:', !!user.mustChangePassword);
+      console.log('- lastPasswordChangedAt exists:', !!user.lastPasswordChangedAt);
+      console.log('- passwordExpiresAt exists:', !!user.passwordExpiresAt);
+      console.log('- missingPasswordDates:', missingPasswordDates);
+      
+      // Force password change if any condition is met
+      const passwordChangeRequired = true;  // Force all users to change password for testing
+      // In production, use: const passwordChangeRequired = user.forcePasswordChange || user.mustChangePassword || missingPasswordDates || false;
+      
+      // Get password expiry information
+      const lastPasswordChangedAt = user.lastPasswordChangedAt || null;
+      const passwordExpiresAt = user.passwordExpiresAt || null;
+      
+      // Debug password related info
+      console.log('Backend - Force password change flag:', user.forcePasswordChange);
+      console.log('Backend - User must change password (virtual):', user.mustChangePassword);
+      console.log('Backend - Last password changed:', lastPasswordChangedAt);
+      console.log('Backend - Password expires at:', passwordExpiresAt);
+      console.log('Backend - Final password change required flag:', passwordChangeRequired);
+      
       // Generate token and send response
       const token = jwt.sign(
         { id: user.id, role: user.role },
@@ -59,6 +88,7 @@ exports.login = async (req, res) => {
       );
 
       console.log('Login activity logged successfully');
+      console.log('Password change required:', passwordChangeRequired);
 
       res.status(200).json({
         status: 'success',
@@ -66,7 +96,16 @@ exports.login = async (req, res) => {
         user: {
           id: user.id,
           email: user.email,
-          role: user.role
+          firstName: user.firstName,
+          lastName: user.lastName,
+          role: user.role,
+          department: user.department,
+          status: user.status,
+          passwordChangeRequired: passwordChangeRequired,
+          forcePasswordChange: user.forcePasswordChange || false,
+          lastPasswordChangedAt: lastPasswordChangedAt,
+          passwordExpiresAt: passwordExpiresAt,
+          profilePicture: user.profilePicture
         }
       });
     } else {

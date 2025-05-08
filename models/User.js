@@ -114,9 +114,18 @@ module.exports = (sequelize) => {
         return date;
       },
     },
+    forcePasswordChange: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false,
+      allowNull: false
+    },
     mustChangePassword: {
       type: DataTypes.VIRTUAL,
       get() {
+        // Return true if forcePasswordChange is explicitly set
+        if (this.forcePasswordChange) return true;
+        
+        // Otherwise check password expiration
         if (!this.lastPasswordChangedAt) return true;
         const now = new Date();
         const expiresAt = new Date(this.passwordExpiresAt);

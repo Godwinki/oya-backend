@@ -1,4 +1,4 @@
-const { User, LoginHistory, ActivityLog } = require('../models');
+const { User, LoginHistory, ActivityLog, sequelize } = require('../models');
 const jwt = require('jsonwebtoken');
 const { Op } = require('sequelize');
 const bcrypt = require('bcryptjs');
@@ -594,8 +594,11 @@ exports.updateUser = async (req, res) => {
 };
 
 exports.deleteUser = async (req, res) => {
+  const t = await sequelize.transaction();
+
   try {
-    const user = await User.findByPk(req.params.id);
+    const userId = req.params.id;
+    const user = await User.findByPk(userId);
     
     if (!user) {
       return res.status(404).json({
@@ -603,15 +606,99 @@ exports.deleteUser = async (req, res) => {
         message: 'User not found'
       });
     }
+
+    console.log(`Deleting user ID: ${userId}`);
     
-    await user.destroy();
+    // Handle all related tables - we'll delete records in the right order
+    // to avoid foreign key constraint issues
+    
+    // 1. Handle tables with notifications first
+    try {
+      const { Notification } = require('../models');
+      if (Notification) {
+        console.log('Deleting related Notification records...');
+        await Notification.destroy({ where: { userId }, transaction: t });
+      }
+    } catch (error) {
+      console.log('No Notification model or error:', error.message);
+    }
+    
+    // 2. Handle security questions
+    try {
+      const { SecurityQuestion } = require('../models');
+      if (SecurityQuestion) {
+        console.log('Deleting related SecurityQuestion records...');
+        await SecurityQuestion.destroy({ where: { userId }, transaction: t });
+      }
+    } catch (error) {
+      console.log('No SecurityQuestion model or error:', error.message);
+    }
+    
+    // 3. Handle leave requests
+    try {
+      const { Leave } = require('../models');
+      if (Leave) {
+        console.log('Deleting related Leave records...');
+        await Leave.destroy({ where: { userId }, transaction: t });
+      }
+    } catch (error) {
+      console.log('No Leave model or error:', error.message);
+    }
+    
+    // 4. Handle expense requests
+    try {
+      const { ExpenseRequest } = require('../models');
+      if (ExpenseRequest) {
+        console.log('Deleting related ExpenseRequest records...');
+        await ExpenseRequest.destroy({ where: { userId }, transaction: t });
+      }
+    } catch (error) {
+      console.log('No ExpenseRequest model or error:', error.message);
+    }
+    
+    // 5. Handle activity logs
+    try {
+      console.log('Deleting related ActivityLog records...');
+      await ActivityLog.destroy({ where: { userId }, transaction: t });
+    } catch (error) {
+      console.log('Error deleting ActivityLog records:', error.message);
+    }
+    
+    // 6. Handle login history
+    try {
+      console.log('Deleting related LoginHistory records...');
+      await LoginHistory.destroy({ where: { userId }, transaction: t });
+    } catch (error) {
+      console.log('Error deleting LoginHistory records:', error.message);
+    }
+    
+    // 7. Finally delete the user itself
+    console.log('Deleting the user record...');
+    await user.destroy({ transaction: t });
+    
+    // Commit the transaction
+    await t.commit();
+    console.log('Transaction committed successfully');
     
     res.status(200).json({
       status: 'success',
       message: 'User deleted successfully'
     });
   } catch (error) {
+    // Rollback transaction if there's an error
+    await t.rollback();
     console.error('Delete user error:', error);
+    
+    // Send appropriate error based on the error type
+    if (error.name === 'SequelizeForeignKeyConstraintError') {
+      const constraintTable = error.original?.table || 'unknown table';
+      return res.status(400).json({
+        status: 'error',
+        message: `Cannot delete user because of foreign key constraint with ${constraintTable}. Please contact an administrator.`,
+        details: error.original?.detail || 'No details available'
+      });
+    }
+    
     res.status(500).json({
       status: 'error',
       message: 'Error deleting user'
@@ -708,7 +795,18 @@ exports.unlockAccount = async (req, res) => {
 
 exports.createUser = async (req, res) => {
   try {
-    const newUser = await User.create(req.body);
+    // Add direct flag for forcing password change that doesn't rely on virtual property calculation
+    const userData = {
+      ...req.body,
+      // Direct flag that will be checked in authController.login
+      forcePasswordChange: true,
+      // Set password expiration to NOW to force password change
+      passwordExpiresAt: new Date(),
+      // Set the last password change to yesterday
+      lastPasswordChangedAt: new Date(Date.now() - 86400000)
+    };
+    
+    const newUser = await User.create(userData);
     const creator = await User.findByPk(req.user.id);
 
     // Log user creation with correct actor details
