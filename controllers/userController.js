@@ -165,7 +165,10 @@ exports.login = async (req, res) => {
       role: user.role,
       department: user.department,
       status: user.status,
-      passwordChangeRequired
+      passwordChangeRequired,
+      lastPasswordChangedAt: user.lastPasswordChangedAt,
+      passwordExpiresAt: user.passwordExpiresAt,
+      profilePicture: user.profilePicture
     };
 
     // Record login attempt
@@ -236,8 +239,24 @@ exports.changePassword = async (req, res) => {
       });
     }
 
-    // Update password
-    await user.update({ password: newPassword });
+    // Update password and reset password change flags
+    const now = new Date();
+    const passwordExpiresAt = new Date();
+    passwordExpiresAt.setDate(now.getDate() + 90); // Password expires in 90 days
+    
+    await user.update({ 
+      password: newPassword,
+      lastPasswordChangedAt: now,
+      passwordExpiresAt: passwordExpiresAt,
+      forcePasswordChange: false
+    });
+    
+    console.log('Password changed successfully for user:', user.id);
+    console.log('Updated password dates:', {
+      lastPasswordChangedAt: now,
+      passwordExpiresAt: passwordExpiresAt,
+      forcePasswordChange: false
+    });
 
     res.status(200).json({
       status: 'success',

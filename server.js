@@ -19,9 +19,10 @@ const expenseRoutes = require('./routes/expenseRoutes');
 const leaveRoutes = require('./routes/leaveRoutes');
 const memberRoutes = require('./routes/memberRoutes');
 const notificationRoutes = require('./routes/notificationRoutes');
-const smsRoutes = require('./routes/smsRoutes');
 const documentRoutes = require('./routes/documentRoutes');
 const accountRoutes = require('./routes/accountRoutes');
+
+
 const fs = require('fs');
 const path = require('path');
 const cookieParser = require('cookie-parser');
@@ -110,8 +111,8 @@ const initDatabase = async () => {
   }
 };
 
-// Initialize the database including SMS tables
-initDatabase();
+// Database initialization will be handled by initializeDatabase() in startServer()
+// Removed redundant initDatabase() call to prevent sync conflicts
 
 // Middleware
 app.use(helmet()); // Security headers
@@ -258,22 +259,28 @@ app.use('/api/budget-categories', budgetCategoryRoutes);
 app.use('/api/expenses', expenseRoutes);
 app.use('/api/leaves', leaveRoutes); 
 app.use('/api/notifications', notificationRoutes); 
-app.use('/api/sms', smsRoutes);
+
 // Register settings routes at top-level
 const settingRoutes = require('./routes/settingRoutes');
 app.use('/api/settings', settingRoutes);
 
 app.use('/api/members', memberRoutes);
 
+// Member bulk upload routes
+const memberUploadRoutes = require('./routes/memberUploadRoutes');
+app.use('/api/member-uploads', memberUploadRoutes);
+
 app.use('/api/documents', documentRoutes);
 app.use('/api/accounts', accountRoutes);
 
-// Add a direct route for account types to match frontend expectations
-app.use('/api/account-types', (req, res, next) => {
-  // Rewrite the path to match our controller methods
-  req.url = '';
-  return accountRoutes(req, res, next);
-});
+// Import account type controller directly
+const accountController = require('./controllers/accountController');
+const { protect } = require('./middleware/authMiddleware');
+
+// Add direct routes for account types to match frontend expectations
+app.get('/api/account-types', protect, accountController.getAccountTypes);
+app.get('/api/account-types/:id', protect, accountController.getAccountTypeById);
+
 
 // Apply API rate limiting to routes except special cases
 // The readOnlyLimiter is applied directly in the route files for special endpoints
@@ -326,12 +333,16 @@ const initializeDatabase = async () => {
       console.error('❌ Error loading Member model:'.red, error.message);
     }
     
-    // Sync with force: false to prevent data loss
-    // Note: Use the migration script to create SMS tables:
-    // node migrations/sms-tables-migration.js
+    // ⚠️ IMPORTANT: Temporarily disabling database synchronization to prevent column conflicts
+    console.log('ℹ️ Database synchronization is disabled to prevent conflicts with existing tables'.yellow);
+    console.log('ℹ️ Only checking database connection status'.yellow);
     
-    // Regular sync for other tables
-    await sequelize.sync({ force: false });
+    // COMPLETELY DISABLE all database sync to prevent column conflicts
+    console.log('📝 Database sync completely disabled to prevent column conflicts'.cyan);
+    console.log('✅ Using existing database schema'.green);
+    
+    // Skip directly to checking if admin user exists
+    // No sync operations will be performed
     
     // Verify Member table was created
     try {

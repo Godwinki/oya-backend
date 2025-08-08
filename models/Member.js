@@ -67,6 +67,14 @@ module.exports = (sequelize, DataTypes) => {
       foreignKey: 'memberId',
       as: 'emergencyContacts'
     });
+    
+    // Many-to-many relationship with ContactCategories for SMS messaging
+    Member.belongsToMany(models.ContactCategory, {
+      through: 'CategoryMembers',
+      foreignKey: 'memberId',
+      otherKey: 'categoryId',
+      as: 'contactCategories'
+    });
   };
 
   return Member;

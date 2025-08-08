@@ -48,11 +48,12 @@ module.exports = (sequelize, DataTypes) => {
     fiscalYear: {
       type: DataTypes.INTEGER,
       allowNull: false
-    },
-    status: {
-      type: DataTypes.ENUM('active', 'frozen', 'depleted'),
-      defaultValue: 'active'
     }
+    // TODO: Add status field to database schema
+    // status: {
+    //   type: DataTypes.ENUM('active', 'frozen', 'depleted'),
+    //   defaultValue: 'active'
+    // }
   }, {
     sequelize,
     modelName: 'BudgetAllocation',
