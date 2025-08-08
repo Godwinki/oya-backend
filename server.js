@@ -110,17 +110,12 @@ const initDatabase = async () => {
     }
   }
 };
-
-// Database initialization will be handled by initializeDatabase() in startServer()
-// Removed redundant initDatabase() call to prevent sync conflicts
-
 // Middleware
 app.use(helmet()); // Security headers
 
 // Add static file serving for uploads
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
-// For Railway deployments, trust the X-Forwarded headers
 // Place this BEFORE any middleware that uses this setting
 app.set('trust proxy', process.env.NODE_ENV === 'production' ? 1 : 0); // Trust first proxy in production
 
