@@ -333,16 +333,35 @@ const initializeDatabase = async () => {
       console.error('❌ Error loading Member model:'.red, error.message);
     }
     
-    // ⚠️ IMPORTANT: Temporarily disabling database synchronization to prevent column conflicts
-    console.log('ℹ️ Database synchronization is disabled to prevent conflicts with existing tables'.yellow);
-    console.log('ℹ️ Only checking database connection status'.yellow);
+    // Check if this is a fresh database by looking for Users table
+    let isFreshDatabase = false;
+    try {
+      const usersTableExists = await sequelize.query(
+        `SELECT EXISTS (
+          SELECT 1 FROM information_schema.tables 
+          WHERE table_name = 'Users'
+        )`,
+        { type: sequelize.QueryTypes.SELECT, plain: true }
+      );
+      isFreshDatabase = !usersTableExists.exists;
+    } catch (error) {
+      // If we can't check, assume it's a fresh database
+      isFreshDatabase = true;
+    }
     
-    // COMPLETELY DISABLE all database sync to prevent column conflicts
-    console.log('📝 Database sync completely disabled to prevent column conflicts'.cyan);
-    console.log('✅ Using existing database schema'.green);
-    
-    // Skip directly to checking if admin user exists
-    // No sync operations will be performed
+    if (isFreshDatabase) {
+      console.log('🆕 Fresh database detected - enabling synchronization to create tables'.green);
+      try {
+        await sequelize.sync({ alter: false });
+        console.log('✅ Database tables created successfully'.green);
+      } catch (syncError) {
+        console.error('❌ Error creating database tables:'.red, syncError.message);
+        throw syncError;
+      }
+    } else {
+      console.log('ℹ️ Existing database detected - skipping synchronization to prevent conflicts'.yellow);
+      console.log('✅ Using existing database schema'.green);
+    }
     
     // Verify Member table was created
     try {
