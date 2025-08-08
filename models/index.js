@@ -12,7 +12,7 @@ const db = {};
 let sequelize;
 // Check directly for DATABASE_URL first, then fall back to config.use_env_variable
 if (process.env.DATABASE_URL) {
-  // Direct DATABASE_URL connection (for Back4app, Heroku, Railway, etc.)
+  // Direct DATABASE_URL connection (for Back4app, Heroku, Railway, Sevalla, etc.)
   console.log('Using DATABASE_URL environment variable for connection');
   sequelize = new Sequelize(process.env.DATABASE_URL, {
     dialect: 'postgres',
@@ -24,9 +24,13 @@ if (process.env.DATABASE_URL) {
     },
     logging: false
   });
-} else if (config.use_env_variable) {
+} else if (config.use_env_variable && process.env[config.use_env_variable]) {
+  // Only use config.use_env_variable if the environment variable actually exists
+  console.log(`Using ${config.use_env_variable} environment variable for connection`);
   sequelize = new Sequelize(process.env[config.use_env_variable], config);
 } else {
+  // Fall back to local database configuration
+  console.log('Using local database configuration');
   sequelize = new Sequelize(
     config.database,
     config.username,
