@@ -127,7 +127,7 @@ app.set('trust proxy', process.env.NODE_ENV === 'production' ? 1 : 0); // Trust 
 // Use the cors package instead of custom middleware for more reliable CORS handling
 const allowedOrigins = process.env.ALLOWED_ORIGINS 
   ? process.env.ALLOWED_ORIGINS.split(',') 
-  : ['http://localhost:3000', 'https://awibsaccosms.netlify.app', 'https://awibsms.netlify.app'];
+  : ['http://localhost:3000', 'https://system.awib-saccos.com'];
 
 app.use(cors({
   origin: function(origin, callback) {
